@@ -89,7 +89,7 @@ for example in examples:
 
 ### OUTPUT:
 
-![Screenshot (171)](https://github.com/user-attachments/assets/20b13675-d566-4de6-ae70-473e720798f5)
+![Screenshot (179)](https://github.com/user-attachments/assets/412c5d81-8920-49d7-b18f-30c7a072979d)
 
 
 ### RESULT:
