@@ -34,62 +34,71 @@ Present the result in a user-friendly format and provide additional guidance if 
 ### PROGRAM:
 
 ```
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.output_parsers import StructuredOutputParser, ResponseSchema
+import math
+import os
+from dotenv import load_dotenv, find_dotenv
+import openai
 
-# Step 1: Define Parameters and Prompt Template
-prompt_template = PromptTemplate(
-    input_variables=["radius", "height"],
-    template=(
-        "You are a helpful math assistant. Extract parameters and calculate cylinder volume.\n"
-        "Input:\n"
-        "Radius: {radius}\n"
-        "Height: {height}\n\n"
-        "Provide a JSON response like this:\n"
-        "{{\n"
-        '  "radius": <value>,\n'
-        '  "height": <value>,\n'
-        '  "volume": <calculated volume>\n'
-        "}}\n\n"
-        "Ensure the response includes a valid calculation."
+_ = load_dotenv(find_dotenv())  # read local .env file
+openai.api_key = os.environ['OPENAI_API_KEY']
+
+def calculate_cylinder_volume(radius, height):
+    """
+    Calculate the volume of a cylinder using the formula:
+    Volume = π * r^2 * h
+    """
+    if radius <= 0 or height <= 0:
+        return "Radius and height must be positive numbers."
+    
+    volume = math.pi * (radius ** 2) * height
+    return round(volume, 2)
+
+def chat_with_openai(prompt):
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are an assistant that helps calculate the volume of a cylinder."},
+            {"role": "user", "content": prompt},
+        ],
+        functions=[
+            {
+                "name": "calculate_cylinder_volume",
+                "description": "Calculate the volume of a cylinder given radius and height.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "radius": {"type": "number", "description": "Radius of the cylinder (in units)"},
+                        "height": {"type": "number", "description": "Height of the cylinder (in units)"},
+                    },
+                    "required": ["radius", "height"],
+                },
+            }
+        ],
+        function_call="auto",  
     )
-)
+    
+    if "function_call" in response["choices"][0]["message"]:
+        function_name = response["choices"][0]["message"]["function_call"]["name"]
+        arguments = eval(response["choices"][0]["message"]["function_call"]["arguments"])
+        if function_name == "calculate_cylinder_volume":
+            radius = arguments["radius"]
+            height = arguments["height"]
+            return calculate_cylinder_volume(radius, height)
+    
+    return response["choices"][0]["message"]["content"]
 
-# Step 2: Define the Output Parser
-response_schemas = [
-    ResponseSchema(name="radius", description="The radius of the cylinder."),
-    ResponseSchema(name="height", description="The height of the cylinder."),
-    ResponseSchema(name="volume", description="The calculated volume of the cylinder."),
-]
-output_parser = StructuredOutputParser.from_response_schemas(response_schemas)
 
-# Step 3: Create the LangChain LLM Chain with Gemini Model
-API_KEY = "**************************"
-llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3, google_api_key=API_KEY)
+radius = float(input("Enter the radius of the cylinder: "))
+height = float(input("Enter the height of the cylinder: "))
 
-chain = LLMChain(prompt=prompt_template, llm=llm, output_parser=output_parser)
-
-# Step 4: Execute the Chain with Examples
-examples = [
-    {"radius": "4", "height": "5"},
-    {"radius": "10", "height": "5.7"},  # This should trigger an error or invalid response
-]
-
-for example in examples:
-    try:
-        result = chain.run(example)
-        print(f"Input: {example}")
-        print(f"Output: {result}\n")
-    except Exception as e:
-        print(f"Error for input {example}: {e}\n")
-
-```
+prompt = f"What is the volume of a cylinder with a radius of {radius} and a height of {height}?"
+result = chat_with_openai(prompt)
+print("Result:", result)
+`````
 
 ### OUTPUT:
 
-![Screenshot (179)](https://github.com/user-attachments/assets/412c5d81-8920-49d7-b18f-30c7a072979d)
+![Screenshot (195)](https://github.com/user-attachments/assets/78b86d30-1e0d-4a5a-b6de-e372c4b2cce8)
 
 
 ### RESULT:
